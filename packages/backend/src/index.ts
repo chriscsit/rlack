@@ -12,7 +12,7 @@ import { channelRoutes } from './routes/channels';
 import { messageRoutes } from './routes/messages';
 import { fileRoutes } from './routes/files';
 import { userRoutes } from './routes/users';
-import { searchRoutes } from './routes/search';
+import searchRoutes from './routes/search';
 import { setupSocketHandlers } from './socket/handlers';
 import { authenticateSocket } from './middleware/auth';
 import { logger } from './utils/logger';
