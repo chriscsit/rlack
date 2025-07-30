@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: rlack
+      POSTGRES_USER: rlack
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rlack_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - rlack_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - rlack_network
+
+  # Rlack Application
+  rlack:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://rlack:${POSTGRES_PASSWORD:-rlack_password}@postgres:5432/rlack
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}
+    volumes:
+      - uploads_data:/app/packages/backend/uploads
+    ports:
+      - "3001:3001"
+    networks:
+      - rlack_network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - rlack
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./packages/web/dist:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - rlack_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
+
+networks:
+  rlack_network:
+    driver: bridge

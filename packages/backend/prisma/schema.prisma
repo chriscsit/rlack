@@ -1,0 +1,320 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  username    String   @unique
+  firstName   String
+  lastName    String
+  avatar      String?
+  status      UserStatus @default(ONLINE)
+  customStatus String?
+  password    String
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  workspaces        WorkspaceMember[]
+  channels          ChannelMember[]
+  messages          Message[]
+  reactions         Reaction[]
+  files             File[]
+  sentInvites       WorkspaceInvite[] @relation("SentInvites")
+  receivedInvites   WorkspaceInvite[] @relation("ReceivedInvites")
+  directMessages    DirectMessage[]   @relation("DirectMessageParticipants")
+  threads           Thread[]
+  reminders         Reminder[]
+  calls             Call[]            @relation("CallParticipants")
+
+  @@map("users")
+}
+
+model Workspace {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  avatar      String?
+  plan        Plan     @default(FREE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  members     WorkspaceMember[]
+  channels    Channel[]
+  invites     WorkspaceInvite[]
+  files       File[]
+  integrations Integration[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String      @id @default(uuid())
+  userId      String
+  workspaceId String
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime    @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@map("workspace_members")
+}
+
+model WorkspaceInvite {
+  id          String      @id @default(uuid())
+  email       String
+  workspaceId String
+  inviterId   String
+  role        WorkspaceRole @default(MEMBER)
+  token       String      @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime    @default(now())
+
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  inviter     User        @relation("SentInvites", fields: [inviterId], references: [id])
+  invitee     User?       @relation("ReceivedInvites", fields: [email], references: [email])
+
+  @@map("workspace_invites")
+}
+
+model Channel {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  type        ChannelType @default(PUBLIC)
+  workspaceId String
+  createdById String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relationships
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members     ChannelMember[]
+  messages    Message[]
+  files       File[]
+
+  @@unique([name, workspaceId])
+  @@map("channels")
+}
+
+model ChannelMember {
+  id        String   @id @default(uuid())
+  userId    String
+  channelId String
+  role      ChannelRole @default(MEMBER)
+  joinedAt  DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channelId])
+  @@map("channel_members")
+}
+
+model Message {
+  id          String      @id @default(uuid())
+  content     String
+  type        MessageType @default(TEXT)
+  channelId   String?
+  directMessageId String?
+  threadId    String?
+  authorId    String
+  editedAt    DateTime?
+  deletedAt   DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relationships
+  author      User         @relation(fields: [authorId], references: [id])
+  channel     Channel?     @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  directMessage DirectMessage? @relation(fields: [directMessageId], references: [id], onDelete: Cascade)
+  thread      Thread?      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  reactions   Reaction[]
+  files       File[]
+  mentions    MessageMention[]
+
+  @@map("messages")
+}
+
+model DirectMessage {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  participants User[]   @relation("DirectMessageParticipants")
+  messages    Message[]
+
+  @@map("direct_messages")
+}
+
+model Thread {
+  id          String   @id @default(uuid())
+  messageId   String   @unique
+  channelId   String
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  messages    Message[]
+
+  @@map("threads")
+}
+
+model Reaction {
+  id        String   @id @default(uuid())
+  emoji     String
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@map("reactions")
+}
+
+model File {
+  id          String   @id @default(uuid())
+  filename    String
+  originalName String
+  mimetype    String
+  size        Int
+  url         String
+  channelId   String?
+  messageId   String?
+  workspaceId String
+  uploadedById String
+  createdAt   DateTime @default(now())
+
+  // Relationships
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channel     Channel?  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  message     Message?  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  uploadedBy  User      @relation(fields: [uploadedById], references: [id])
+
+  @@map("files")
+}
+
+model MessageMention {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_mentions")
+}
+
+model Reminder {
+  id          String   @id @default(uuid())
+  text        String
+  scheduledFor DateTime
+  completed   Boolean  @default(false)
+  userId      String
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reminders")
+}
+
+model Call {
+  id          String     @id @default(uuid())
+  type        CallType   @default(VOICE)
+  status      CallStatus @default(ACTIVE)
+  channelId   String?
+  startedById String
+  startedAt   DateTime   @default(now())
+  endedAt     DateTime?
+
+  // Relationships
+  participants User[]    @relation("CallParticipants")
+
+  @@map("calls")
+}
+
+model Integration {
+  id          String   @id @default(uuid())
+  name        String
+  type        String
+  config      Json
+  workspaceId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("integrations")
+}
+
+// Enums
+enum UserStatus {
+  ONLINE
+  AWAY
+  DO_NOT_DISTURB
+  OFFLINE
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+}
+
+enum ChannelType {
+  PUBLIC
+  PRIVATE
+  DIRECT
+}
+
+enum ChannelRole {
+  ADMIN
+  MEMBER
+}
+
+enum MessageType {
+  TEXT
+  FILE
+  IMAGE
+  SYSTEM
+  CALL_START
+  CALL_END
+}
+
+enum CallType {
+  VOICE
+  VIDEO
+}
+
+enum CallStatus {
+  ACTIVE
+  ENDED
+}

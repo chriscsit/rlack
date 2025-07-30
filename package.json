@@ -1,0 +1,30 @@
+{
+  "name": "rlack",
+  "version": "1.0.0",
+  "description": "A complete Slack clone with web and macOS applications",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm run install:packages",
+    "install:packages": "cd packages/backend && npm install && cd ../web && npm install && cd ../desktop && npm install",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:web\"",
+    "dev:backend": "cd packages/backend && npm run dev",
+    "dev:web": "cd packages/web && npm run dev",
+    "dev:desktop": "cd packages/desktop && npm run dev",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:web\" \"npm run dev:desktop\"",
+    "build": "npm run build:backend && npm run build:web && npm run build:desktop",
+    "build:backend": "cd packages/backend && npm run build",
+    "build:web": "cd packages/web && npm run build",
+    "build:desktop": "cd packages/desktop && npm run build",
+    "dist:desktop": "cd packages/desktop && npm run dist:mac",
+    "setup": "npm run install:all && npm run setup:env"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
