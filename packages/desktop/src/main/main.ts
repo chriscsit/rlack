@@ -28,7 +28,7 @@ contextMenu({
       label: 'Reload',
       accelerator: 'CmdOrCtrl+R',
       click: () => {
-        browserWindow.webContents.reload();
+        (browserWindow as BrowserWindow).webContents.reload();
       },
     },
   ],
@@ -189,7 +189,7 @@ const createMenu = () => {
         { role: 'cut' },
         { role: 'copy' },
         { role: 'paste' },
-        { role: 'selectall' },
+        { role: 'selectAll' },
       ],
     },
     {
@@ -299,8 +299,15 @@ app.on('open-url', (event, url) => {
 
 // Security: Prevent new window creation
 app.on('web-contents-created', (event, contents) => {
-  contents.on('new-window', (navigationEvent, navigationUrl) => {
-    navigationEvent.preventDefault();
-    shell.openExternal(navigationUrl);
+  contents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  contents.on('will-navigate', (navigationEvent, navigationUrl) => {
+    if (navigationUrl !== contents.getURL()) {
+      navigationEvent.preventDefault();
+      shell.openExternal(navigationUrl);
+    }
   });
 });

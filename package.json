@@ -22,7 +22,8 @@
     "setup": "npm run install:all && npm run setup:env"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "electron": "^37.2.4"
   },
   "engines": {
     "node": ">=18.0.0"

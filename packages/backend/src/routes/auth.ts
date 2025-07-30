@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import Joi from 'joi';
@@ -31,7 +31,7 @@ const generateToken = (userId: string) => {
 };
 
 // Register
-router.post('/register', asyncHandler(async (req, res) => {
+router.post('/register', asyncHandler(async (req: Request, res: Response) => {
   const { error, value } = registerSchema.validate(req.body);
   if (error) {
     throw createError(error.details[0].message, 400);
@@ -90,7 +90,7 @@ router.post('/register', asyncHandler(async (req, res) => {
 }));
 
 // Login
-router.post('/login', asyncHandler(async (req, res) => {
+router.post('/login', asyncHandler(async (req: Request, res: Response) => {
   const { error, value } = loginSchema.validate(req.body);
   if (error) {
     throw createError(error.details[0].message, 400);
@@ -137,7 +137,7 @@ router.post('/login', asyncHandler(async (req, res) => {
 }));
 
 // Get current user
-router.get('/me', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.get('/me', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
     select: {
@@ -173,7 +173,7 @@ router.get('/me', authenticateToken, asyncHandler(async (req: AuthenticatedReque
 }));
 
 // Update user profile
-router.patch('/profile', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.patch('/profile', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const updateSchema = Joi.object({
     firstName: Joi.string().min(1).max(50),
     lastName: Joi.string().min(1).max(50),
@@ -212,7 +212,7 @@ router.patch('/profile', authenticateToken, asyncHandler(async (req: Authenticat
 }));
 
 // Logout
-router.post('/logout', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.post('/logout', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   // Update user status to offline
   await prisma.user.update({
     where: { id: req.user!.id },
